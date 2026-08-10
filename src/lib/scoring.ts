@@ -11,24 +11,25 @@ export function competitionPoints(
   entries: Record<string, number> | undefined,
   participantIds: string[],
 ): Record<string, number> {
-  const scored = participantIds
-    .filter((id) => entries && typeof entries[id] === "number" && !Number.isNaN(entries[id]))
-    .map((id) => ({ id, value: entries![id] }));
+  const scored: { id: string; value: number }[] = [];
+  for (const id of participantIds) {
+    const value = entries?.[id];
+    if (typeof value === "number" && !Number.isNaN(value)) scored.push({ id, value });
+  }
 
   const n = scored.length;
   const out: Record<string, number> = {};
   if (n === 0) return out;
 
-  scored.sort((a, b) =>
-    competition.direction === "low" ? a.value - b.value : b.value - a.value,
-  );
+  scored.sort((a, b) => (competition.direction === "low" ? a.value - b.value : b.value - a.value));
 
   let index = 0;
   while (index < scored.length) {
+    const current = scored[index]!;
     let end = index;
-    while (end + 1 < scored.length && scored[end + 1].value === scored[index].value) end++;
+    while (end + 1 < scored.length && scored[end + 1]!.value === current.value) end++;
     const points = (n - index) * competition.multiplier;
-    for (let i = index; i <= end; i++) out[scored[i].id] = points;
+    for (let i = index; i <= end; i++) out[scored[i]!.id] = points;
     index = end + 1;
   }
   return out;
@@ -58,8 +59,8 @@ export function computeTotals(
     const points = competitionPoints(competition, scores[competition.id], ids);
     for (const id of ids) {
       const p = points[id] ?? 0;
-      breakdown[id][competition.id] = p;
-      totals[id] += p;
+      breakdown[id]![competition.id] = p;
+      totals[id] = (totals[id] ?? 0) + p;
     }
   }
   return { totals, breakdown };
