@@ -10,33 +10,43 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as KonkurrencerRouteImport } from './routes/konkurrencer'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KonkurrencerRoute = KonkurrencerRouteImport.update({
+  id: '/konkurrencer',
+  path: '/konkurrencer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/konkurrencer': typeof KonkurrencerRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/konkurrencer': typeof KonkurrencerRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/konkurrencer': typeof KonkurrencerRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/konkurrencer'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/konkurrencer'
+  id: '__root__' | '/' | '/konkurrencer'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  KonkurrencerRoute: typeof KonkurrencerRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +58,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/konkurrencer': {
+      id: '/konkurrencer'
+      path: '/konkurrencer'
+      fullPath: '/konkurrencer'
+      preLoaderRoute: typeof KonkurrencerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  KonkurrencerRoute: KonkurrencerRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
