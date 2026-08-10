@@ -10,33 +10,92 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as KanoerRouteImport } from './routes/kanoer'
+import { Route as KonkurrencerRouteImport } from './routes/konkurrencer'
+import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as OversigtRouteImport } from './routes/oversigt'
+import { Route as ScoresRouteImport } from './routes/scores'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KanoerRoute = KanoerRouteImport.update({
+  id: '/kanoer',
+  path: '/kanoer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KonkurrencerRoute = KonkurrencerRouteImport.update({
+  id: '/konkurrencer',
+  path: '/konkurrencer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardRoute = LeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OversigtRoute = OversigtRouteImport.update({
+  id: '/oversigt',
+  path: '/oversigt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScoresRoute = ScoresRouteImport.update({
+  id: '/scores',
+  path: '/scores',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/kanoer': typeof KanoerRoute
+  '/konkurrencer': typeof KonkurrencerRoute
+  '/leaderboard': typeof LeaderboardRoute
+  '/oversigt': typeof OversigtRoute
+  '/scores': typeof ScoresRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/kanoer': typeof KanoerRoute
+  '/konkurrencer': typeof KonkurrencerRoute
+  '/leaderboard': typeof LeaderboardRoute
+  '/oversigt': typeof OversigtRoute
+  '/scores': typeof ScoresRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/kanoer': typeof KanoerRoute
+  '/konkurrencer': typeof KonkurrencerRoute
+  '/leaderboard': typeof LeaderboardRoute
+  '/oversigt': typeof OversigtRoute
+  '/scores': typeof ScoresRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    '/' | '/kanoer' | '/konkurrencer' | '/leaderboard' | '/oversigt' | '/scores'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    '/' | '/kanoer' | '/konkurrencer' | '/leaderboard' | '/oversigt' | '/scores'
+  id:
+    | '__root__'
+    | '/'
+    | '/kanoer'
+    | '/konkurrencer'
+    | '/leaderboard'
+    | '/oversigt'
+    | '/scores'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  KanoerRoute: typeof KanoerRoute
+  KonkurrencerRoute: typeof KonkurrencerRoute
+  LeaderboardRoute: typeof LeaderboardRoute
+  OversigtRoute: typeof OversigtRoute
+  ScoresRoute: typeof ScoresRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +107,52 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/kanoer': {
+      id: '/kanoer'
+      path: '/kanoer'
+      fullPath: '/kanoer'
+      preLoaderRoute: typeof KanoerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/konkurrencer': {
+      id: '/konkurrencer'
+      path: '/konkurrencer'
+      fullPath: '/konkurrencer'
+      preLoaderRoute: typeof KonkurrencerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oversigt': {
+      id: '/oversigt'
+      path: '/oversigt'
+      fullPath: '/oversigt'
+      preLoaderRoute: typeof OversigtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scores': {
+      id: '/scores'
+      path: '/scores'
+      fullPath: '/scores'
+      preLoaderRoute: typeof ScoresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  KanoerRoute: KanoerRoute,
+  KonkurrencerRoute: KonkurrencerRoute,
+  LeaderboardRoute: LeaderboardRoute,
+  OversigtRoute: OversigtRoute,
+  ScoresRoute: ScoresRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
