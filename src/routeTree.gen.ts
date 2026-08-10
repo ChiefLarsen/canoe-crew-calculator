@@ -10,13 +10,20 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as KanoerRouteImport } from './routes/kanoer'
 import { Route as KonkurrencerRouteImport } from './routes/konkurrencer'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as OversigtRouteImport } from './routes/oversigt'
 import { Route as ScoresRouteImport } from './routes/scores'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KanoerRoute = KanoerRouteImport.update({
+  id: '/kanoer',
+  path: '/kanoer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KonkurrencerRoute = KonkurrencerRouteImport.update({
@@ -29,6 +36,11 @@ const LeaderboardRoute = LeaderboardRouteImport.update({
   path: '/leaderboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OversigtRoute = OversigtRouteImport.update({
+  id: '/oversigt',
+  path: '/oversigt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScoresRoute = ScoresRouteImport.update({
   id: '/scores',
   path: '/scores',
@@ -37,35 +49,52 @@ const ScoresRoute = ScoresRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/kanoer': typeof KanoerRoute
   '/konkurrencer': typeof KonkurrencerRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/oversigt': typeof OversigtRoute
   '/scores': typeof ScoresRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/kanoer': typeof KanoerRoute
   '/konkurrencer': typeof KonkurrencerRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/oversigt': typeof OversigtRoute
   '/scores': typeof ScoresRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/kanoer': typeof KanoerRoute
   '/konkurrencer': typeof KonkurrencerRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/oversigt': typeof OversigtRoute
   '/scores': typeof ScoresRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/konkurrencer' | '/leaderboard' | '/scores'
+  fullPaths:
+    '/' | '/kanoer' | '/konkurrencer' | '/leaderboard' | '/oversigt' | '/scores'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/konkurrencer' | '/leaderboard' | '/scores'
-  id: '__root__' | '/' | '/konkurrencer' | '/leaderboard' | '/scores'
+  to:
+    '/' | '/kanoer' | '/konkurrencer' | '/leaderboard' | '/oversigt' | '/scores'
+  id:
+    | '__root__'
+    | '/'
+    | '/kanoer'
+    | '/konkurrencer'
+    | '/leaderboard'
+    | '/oversigt'
+    | '/scores'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  KanoerRoute: typeof KanoerRoute
   KonkurrencerRoute: typeof KonkurrencerRoute
   LeaderboardRoute: typeof LeaderboardRoute
+  OversigtRoute: typeof OversigtRoute
   ScoresRoute: typeof ScoresRoute
 }
 
@@ -76,6 +105,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kanoer': {
+      id: '/kanoer'
+      path: '/kanoer'
+      fullPath: '/kanoer'
+      preLoaderRoute: typeof KanoerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/konkurrencer': {
@@ -92,6 +128,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeaderboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/oversigt': {
+      id: '/oversigt'
+      path: '/oversigt'
+      fullPath: '/oversigt'
+      preLoaderRoute: typeof OversigtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scores': {
       id: '/scores'
       path: '/scores'
@@ -104,8 +147,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  KanoerRoute: KanoerRoute,
   KonkurrencerRoute: KonkurrencerRoute,
   LeaderboardRoute: LeaderboardRoute,
+  OversigtRoute: OversigtRoute,
   ScoresRoute: ScoresRoute,
 }
 export const routeTree = rootRouteImport
