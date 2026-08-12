@@ -7,41 +7,53 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { computeStandings } from "./scoring";
 import { initialState } from "./seed";
 import type {
   AppState,
   Assignment,
   Competition,
   Group,
+  HistoryEntry,
   Participant,
+  Session,
 } from "./types";
 
-const STORAGE_KEY = "fordelingsnogle-kanotur-v1";
+const STORAGE_KEY = "fordelingsnogle-kanotur-v2";
 
 export function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
+export interface StartSessionInput {
+  groupId: string;
+  participantIds: string[];
+  competitionIds: string[];
+  leaderId: string | null;
+  captainId: string | null;
+}
+
 interface StoreValue {
   state: AppState;
   hydrated: boolean;
-  activeGroup: Group | undefined;
-  groupParticipants: Participant[];
-  activeParticipants: Participant[];
-  selectedCompetitions: Competition[];
-  addGroup: (name: string) => void;
+  session: Session | null;
+  addGroup: (name: string) => string;
   renameGroup: (id: string, name: string) => void;
   deleteGroup: (id: string) => void;
-  setActiveGroup: (id: string) => void;
-  addParticipant: (name: string) => void;
+  participantsOf: (groupId: string) => Participant[];
+  addParticipant: (groupId: string, name: string) => void;
   updateParticipant: (id: string, patch: Partial<Participant>) => void;
   deleteParticipant: (id: string) => void;
   addCompetition: (competition: Omit<Competition, "id">) => void;
   updateCompetition: (id: string, patch: Partial<Competition>) => void;
   deleteCompetition: (id: string) => void;
+  startSession: (input: StartSessionInput) => void;
   setScore: (competitionId: string, participantId: string, value: number | null) => void;
   clearScores: (competitionId: string) => void;
   setAssignment: (assignment: Assignment | null) => void;
+  endSession: () => void;
+  discardSession: () => void;
+  deleteHistoryEntry: (id: string) => void;
   resetAll: () => void;
 }
 
@@ -56,7 +68,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as AppState;
-        if (parsed && Array.isArray(parsed.participants)) {
+        if (parsed && parsed.version === 2 && Array.isArray(parsed.participants)) {
           setState({ ...initialState(), ...parsed });
         }
       }
@@ -76,48 +88,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [state, hydrated]);
 
   const value = useMemo<StoreValue>(() => {
-    const groupParticipants = state.participants.filter(
-      (p) => p.groupId === state.activeGroupId,
-    );
     const patch = (updater: (prev: AppState) => AppState) => setState(updater);
+    const patchSession = (updater: (session: Session) => Session) =>
+      patch((prev) => (prev.session ? { ...prev, session: updater(prev.session) } : prev));
 
     return {
       state,
       hydrated,
-      activeGroup: state.groups.find((g) => g.id === state.activeGroupId),
-      groupParticipants,
-      activeParticipants: groupParticipants.filter((p) => p.active),
-      selectedCompetitions: state.competitions.filter((c) => c.selected),
-      addGroup: (name) =>
-        patch((prev) => {
-          const group = { id: uid(), name };
-          return { ...prev, groups: [...prev.groups, group], activeGroupId: group.id };
-        }),
+      session: state.session,
+      addGroup: (name) => {
+        const group: Group = { id: uid(), name };
+        patch((prev) => ({ ...prev, groups: [...prev.groups, group] }));
+        return group.id;
+      },
       renameGroup: (id, name) =>
         patch((prev) => ({
           ...prev,
           groups: prev.groups.map((g) => (g.id === id ? { ...g, name } : g)),
         })),
       deleteGroup: (id) =>
-        patch((prev) => {
-          const groups = prev.groups.filter((g) => g.id !== id);
-          if (groups.length === 0) return prev;
-          return {
-            ...prev,
-            groups,
-            participants: prev.participants.filter((p) => p.groupId !== id),
-            activeGroupId: prev.activeGroupId === id ? groups[0]!.id : prev.activeGroupId,
-            assignment: null,
-          };
-        }),
-      setActiveGroup: (id) => patch((prev) => ({ ...prev, activeGroupId: id, assignment: null })),
-      addParticipant: (name) =>
         patch((prev) => ({
           ...prev,
-          participants: [
-            ...prev.participants,
-            { id: uid(), name, groupId: prev.activeGroupId, active: true },
-          ],
+          groups: prev.groups.filter((g) => g.id !== id),
+          participants: prev.participants.filter((p) => p.groupId !== id),
+        })),
+      participantsOf: (groupId) => state.participants.filter((p) => p.groupId === groupId),
+      addParticipant: (groupId, name) =>
+        patch((prev) => ({
+          ...prev,
+          participants: [...prev.participants, { id: uid(), name, groupId }],
         })),
       updateParticipant: (id, p) =>
         patch((prev) => ({
@@ -140,25 +139,60 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           competitions: prev.competitions.map((c) => (c.id === id ? { ...c, ...p } : c)),
         })),
       deleteCompetition: (id) =>
+        patch((prev) => ({ ...prev, competitions: prev.competitions.filter((c) => c.id !== id) })),
+      startSession: (input) =>
         patch((prev) => {
-          const scores = { ...prev.scores };
-          delete scores[id];
-          return {
-            ...prev,
-            competitions: prev.competitions.filter((c) => c.id !== id),
-            scores,
+          const group = prev.groups.find((g) => g.id === input.groupId);
+          const participants = prev.participants
+            .filter((p) => p.groupId === input.groupId && input.participantIds.includes(p.id))
+            .map((p) => ({ id: p.id, name: p.name }));
+          const competitions = prev.competitions
+            .filter((c) => input.competitionIds.includes(c.id))
+            .map((c) => ({ ...c }));
+          const session: Session = {
+            id: uid(),
+            createdAt: Date.now(),
+            groupId: input.groupId,
+            groupName: group?.name ?? "Kanotur",
+            participants,
+            competitions,
+            leaderId: input.leaderId,
+            captainId: input.captainId,
+            scores: {},
+            assignment: null,
           };
+          return { ...prev, session };
         }),
       setScore: (competitionId, participantId, val) =>
-        patch((prev) => {
-          const entries = { ...(prev.scores[competitionId] ?? {}) };
+        patchSession((session) => {
+          const entries = { ...(session.scores[competitionId] ?? {}) };
           if (val === null || Number.isNaN(val)) delete entries[participantId];
           else entries[participantId] = val;
-          return { ...prev, scores: { ...prev.scores, [competitionId]: entries } };
+          return { ...session, scores: { ...session.scores, [competitionId]: entries } };
         }),
       clearScores: (competitionId) =>
-        patch((prev) => ({ ...prev, scores: { ...prev.scores, [competitionId]: {} } })),
-      setAssignment: (assignment) => patch((prev) => ({ ...prev, assignment })),
+        patchSession((session) => ({
+          ...session,
+          scores: { ...session.scores, [competitionId]: {} },
+        })),
+      setAssignment: (assignment) => patchSession((session) => ({ ...session, assignment })),
+      endSession: () =>
+        patch((prev) => {
+          if (!prev.session) return prev;
+          const s = prev.session;
+          const entry: HistoryEntry = {
+            ...s,
+            endedAt: Date.now(),
+            standings: computeStandings(s.participants, s.competitions, s.scores, {
+              leaderId: s.leaderId,
+              captainId: s.captainId,
+            }),
+          };
+          return { ...prev, session: null, history: [entry, ...prev.history] };
+        }),
+      discardSession: () => patch((prev) => ({ ...prev, session: null })),
+      deleteHistoryEntry: (id) =>
+        patch((prev) => ({ ...prev, history: prev.history.filter((h) => h.id !== id) })),
       resetAll: () => setState(initialState()),
     };
   }, [state, hydrated]);
