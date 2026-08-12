@@ -1,25 +1,24 @@
 import { Link } from "@tanstack/react-router";
-import { Beer, Moon, Sun, Users, Trophy, ClipboardList, Ship, ListOrdered } from "lucide-react";
+import { History, Moon, Settings2, Ship, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 import { useThemeToggle } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "Deltagere", icon: Users },
-  { to: "/konkurrencer", label: "Konkurrencer", icon: Trophy },
-  { to: "/scores", label: "Scores", icon: ClipboardList },
-  { to: "/leaderboard", label: "Stilling", icon: ListOrdered },
-  { to: "/kanoer", label: "Kanoer", icon: Ship },
-  { to: "/oversigt", label: "Oversigt", icon: Beer },
+  { to: "/", label: "Session", icon: Ship },
+  { to: "/opsaetning", label: "Opsætning", icon: Settings2 },
+  { to: "/historik", label: "Historik", icon: History },
 ] as const;
 
 export function AppShell({
   title,
   description,
+  subnav,
   children,
 }: {
   title: string;
   description?: string;
+  subnav?: ReactNode;
   children: ReactNode;
 }) {
   const { dark, toggle } = useThemeToggle();
@@ -74,6 +73,7 @@ export function AppShell({
           {title}
         </h1>
         {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
+        {subnav ? <div className="mt-4">{subnav}</div> : null}
         <div className="mt-6 space-y-6">{children}</div>
       </main>
     </div>
