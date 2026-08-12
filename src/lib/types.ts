@@ -9,16 +9,15 @@ export interface Participant {
   id: string;
   name: string;
   groupId: string;
-  active: boolean;
 }
 
 export interface Competition {
   id: string;
   name: string;
   unit: string;
+  description: string;
   direction: ScoringDirection;
   multiplier: number;
-  selected: boolean;
 }
 
 /** scores[competitionId][participantId] = raw value */
@@ -51,12 +50,42 @@ export interface CanoeLayout {
   threes: number;
 }
 
+export interface SessionParticipant {
+  id: string;
+  name: string;
+}
+
+export interface Session {
+  id: string;
+  createdAt: number;
+  groupId: string;
+  groupName: string;
+  /** Snapshot of the participants taking part in this session. */
+  participants: SessionParticipant[];
+  /** Snapshot of the competitions used in this session. */
+  competitions: Competition[];
+  leaderId: string | null;
+  captainId: string | null;
+  scores: ScoreMap;
+  assignment: Assignment | null;
+}
+
+export interface Standing {
+  id: string;
+  name: string;
+  points: number;
+}
+
+export interface HistoryEntry extends Session {
+  endedAt: number;
+  standings: Standing[];
+}
+
 export interface AppState {
   version: number;
   groups: Group[];
-  activeGroupId: string;
   participants: Participant[];
   competitions: Competition[];
-  scores: ScoreMap;
-  assignment: Assignment | null;
+  session: Session | null;
+  history: HistoryEntry[];
 }

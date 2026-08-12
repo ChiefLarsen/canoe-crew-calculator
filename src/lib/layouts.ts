@@ -22,7 +22,7 @@ export function layoutKey(layout: CanoeLayout): string {
   return `${layout.twos}-${layout.threes}`;
 }
 
-/** Canoe sizes for a layout, larger canoes first. */
+/** Canoe sizes for a layout: 2-mands kanoer fyldes altid først, 3-mands sidst. */
 export function layoutSizes(layout: CanoeLayout): number[] {
-  return [...Array<number>(layout.threes).fill(3), ...Array<number>(layout.twos).fill(2)];
+  return [...Array<number>(layout.twos).fill(2), ...Array<number>(layout.threes).fill(3)];
 }
