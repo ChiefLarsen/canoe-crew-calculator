@@ -1,20 +1,50 @@
-import type { Competition, Participant, ScoreMap } from "./types";
+import type { Competition, ScoreMap, SessionParticipant, Standing } from "./types";
+
+export const LEADER_FACTOR = 3;
+export const CAPTAIN_FACTOR = 10;
+
+export const LEADER_BADGE = "🧭";
+export const CAPTAIN_BADGE = "🧢";
+
+export interface RoleHolders {
+  leaderId?: string | null;
+  captainId?: string | null;
+}
+
+/** Advantage factor for a participant: Kaptajn 10x, Ekspeditionsleder 3x, ellers 1x. */
+export function advantageFactor(participantId: string, roles: RoleHolders): number {
+  if (roles.captainId === participantId) return CAPTAIN_FACTOR;
+  if (roles.leaderId === participantId) return LEADER_FACTOR;
+  return 1;
+}
+
+export function effectiveScore(
+  raw: number,
+  direction: Competition["direction"],
+  factor: number,
+): number {
+  return direction === "low" ? raw / factor : raw * factor;
+}
 
 /**
- * Rank points for one competition.
- * N scored participants -> best gets N points, worst gets 1.
- * Ties share the points of the best rank in the tie.
- * Result is multiplied by the competition multiplier.
+ * Rank points for one competition, based on effective (advantage-adjusted) scores.
+ * N scored participants -> best gets N points, worst gets 1. Ties share the best rank.
  */
 export function competitionPoints(
   competition: Competition,
   entries: Record<string, number> | undefined,
   participantIds: string[],
+  roles: RoleHolders = {},
 ): Record<string, number> {
   const scored: { id: string; value: number }[] = [];
   for (const id of participantIds) {
     const value = entries?.[id];
-    if (typeof value === "number" && !Number.isNaN(value)) scored.push({ id, value });
+    if (typeof value === "number" && !Number.isNaN(value)) {
+      scored.push({
+        id,
+        value: effectiveScore(value, competition.direction, advantageFactor(id, roles)),
+      });
+    }
   }
 
   const n = scored.length;
@@ -36,16 +66,15 @@ export function competitionPoints(
 }
 
 export interface Totals {
-  /** totals[participantId] = total points */
   totals: Record<string, number>;
-  /** breakdown[participantId][competitionId] = points */
   breakdown: Record<string, Record<string, number>>;
 }
 
 export function computeTotals(
-  participants: Participant[],
+  participants: SessionParticipant[],
   competitions: Competition[],
   scores: ScoreMap,
+  roles: RoleHolders = {},
 ): Totals {
   const ids = participants.map((p) => p.id);
   const totals: Record<string, number> = {};
@@ -56,7 +85,7 @@ export function computeTotals(
   }
 
   for (const competition of competitions) {
-    const points = competitionPoints(competition, scores[competition.id], ids);
+    const points = competitionPoints(competition, scores[competition.id], ids, roles);
     for (const id of ids) {
       const p = points[id] ?? 0;
       breakdown[id]![competition.id] = p;
@@ -66,6 +95,24 @@ export function computeTotals(
   return { totals, breakdown };
 }
 
+export function computeStandings(
+  participants: SessionParticipant[],
+  competitions: Competition[],
+  scores: ScoreMap,
+  roles: RoleHolders = {},
+): Standing[] {
+  const { totals } = computeTotals(participants, competitions, scores, roles);
+  return participants
+    .map((p) => ({ id: p.id, name: p.name, points: totals[p.id] ?? 0 }))
+    .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name, "da"));
+}
+
 export function formatPoints(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+export function roleBadge(participantId: string, roles: RoleHolders): string {
+  if (roles.captainId === participantId) return CAPTAIN_BADGE;
+  if (roles.leaderId === participantId) return LEADER_BADGE;
+  return "";
 }
