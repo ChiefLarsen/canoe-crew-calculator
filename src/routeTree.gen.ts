@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as KanoerRouteImport } from './routes/kanoer'
+import { Route as OpsaetningRouteImport } from './routes/opsaetning'
 import { Route as OversigtRouteImport } from './routes/oversigt'
 import { Route as ScoresRouteImport } from './routes/scores'
 
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
 const KanoerRoute = KanoerRouteImport.update({
   id: '/kanoer',
   path: '/kanoer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpsaetningRoute = OpsaetningRouteImport.update({
+  id: '/opsaetning',
+  path: '/opsaetning',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OversigtRoute = OversigtRouteImport.update({
@@ -38,12 +44,14 @@ const ScoresRoute = ScoresRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/kanoer': typeof KanoerRoute
+  '/opsaetning': typeof OpsaetningRoute
   '/oversigt': typeof OversigtRoute
   '/scores': typeof ScoresRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/kanoer': typeof KanoerRoute
+  '/opsaetning': typeof OpsaetningRoute
   '/oversigt': typeof OversigtRoute
   '/scores': typeof ScoresRoute
 }
@@ -51,20 +59,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/kanoer': typeof KanoerRoute
+  '/opsaetning': typeof OpsaetningRoute
   '/oversigt': typeof OversigtRoute
   '/scores': typeof ScoresRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/kanoer' | '/oversigt' | '/scores'
+  fullPaths: '/' | '/kanoer' | '/opsaetning' | '/oversigt' | '/scores'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/kanoer' | '/oversigt' | '/scores'
-  id: '__root__' | '/' | '/kanoer' | '/oversigt' | '/scores'
+  to: '/' | '/kanoer' | '/opsaetning' | '/oversigt' | '/scores'
+  id: '__root__' | '/' | '/kanoer' | '/opsaetning' | '/oversigt' | '/scores'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   KanoerRoute: typeof KanoerRoute
+  OpsaetningRoute: typeof OpsaetningRoute
   OversigtRoute: typeof OversigtRoute
   ScoresRoute: typeof ScoresRoute
 }
@@ -83,6 +93,13 @@ declare module '@tanstack/react-router' {
       path: '/kanoer'
       fullPath: '/kanoer'
       preLoaderRoute: typeof KanoerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/opsaetning': {
+      id: '/opsaetning'
+      path: '/opsaetning'
+      fullPath: '/opsaetning'
+      preLoaderRoute: typeof OpsaetningRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/oversigt': {
@@ -105,6 +122,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   KanoerRoute: KanoerRoute,
+  OpsaetningRoute: OpsaetningRoute,
   OversigtRoute: OversigtRoute,
   ScoresRoute: ScoresRoute,
 }
