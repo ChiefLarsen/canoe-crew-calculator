@@ -3,6 +3,8 @@ import { Dices, Ship } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { NoSession } from "@/components/NoSession";
+import { SessionNav } from "@/components/SessionNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { allocate, STRATEGY_DESCRIPTIONS, STRATEGY_LABELS } from "@/lib/allocation";
@@ -17,13 +19,15 @@ export const Route = createFileRoute("/kanoer")({
       { title: "Kanofordeling – Fordelingsnøgle Kanotur" },
       {
         name: "description",
-        content: "Vælg kanoopstilling og fordelingsstrategi, og få holdene fordelt automatisk.",
+        content: "Vælg kanoopstilling og fordelingsstrategi – 2-mands først, 3-mands til sidst.",
       },
       { property: "og:title", content: "Kanofordeling – Fordelingsnøgle Kanotur" },
       {
         property: "og:description",
-        content: "Vælg kanoopstilling og fordelingsstrategi, og få holdene fordelt automatisk.",
+        content: "Vælg kanoopstilling og fordelingsstrategi – 2-mands først, 3-mands til sidst.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: CanoesPage,
@@ -32,10 +36,11 @@ export const Route = createFileRoute("/kanoer")({
 const STRATEGIES: Strategy[] = ["balance", "elite", "chaos"];
 
 function CanoesPage() {
-  const { activeParticipants, selectedCompetitions, state, setAssignment } = useStore();
+  const { session, setAssignment } = useStore();
   const navigate = useNavigate();
 
-  const layouts = useMemo(() => canoeLayouts(activeParticipants.length), [activeParticipants]);
+  const participants = useMemo(() => session?.participants ?? [], [session]);
+  const layouts = useMemo(() => canoeLayouts(participants.length), [participants]);
   const [selectedKey, setSelectedKey] = useState<string>("");
   const [strategy, setStrategy] = useState<Strategy>("balance");
 
@@ -47,15 +52,20 @@ function CanoesPage() {
     }
   }, [layouts, selectedKey]);
 
-  const { totals } = useMemo(
-    () => computeTotals(activeParticipants, selectedCompetitions, state.scores),
-    [activeParticipants, selectedCompetitions, state.scores],
-  );
+  const totals = useMemo(() => {
+    if (!session) return {};
+    return computeTotals(session.participants, session.competitions, session.scores, {
+      leaderId: session.leaderId,
+      captainId: session.captainId,
+    }).totals;
+  }, [session]);
+
+  if (!session) return <NoSession title="Kanoer" />;
 
   const generate = () => {
     const layout = layouts.find((l) => layoutKey(l) === selectedKey);
     if (!layout) return;
-    const ranked = activeParticipants.map((p) => ({ id: p.id, points: totals[p.id] ?? 0 }));
+    const ranked = participants.map((p) => ({ id: p.id, points: totals[p.id] ?? 0 }));
     setAssignment(allocate(ranked, layout, strategy));
     toast.success("Kanoerne er fordelt!");
     void navigate({ to: "/oversigt" });
@@ -64,12 +74,13 @@ function CanoesPage() {
   return (
     <AppShell
       title="Kanoer"
-      description={`${activeParticipants.length} aktive deltagere. Vælg opstilling og hvordan holdene skal sættes.`}
+      description={`${participants.length} deltagere. 2-mands kanoer fyldes først, 3-mands til sidst.`}
+      subnav={<SessionNav />}
     >
       {layouts.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          Der skal mindst være 2 aktive deltagere – og antallet skal kunne deles op i kanoer med 2
-          og 3 pladser. Lige nu er der {activeParticipants.length}.
+          Antallet af deltagere ({participants.length}) kan ikke deles op i kanoer med 2 og 3
+          pladser.
         </p>
       ) : (
         <>
