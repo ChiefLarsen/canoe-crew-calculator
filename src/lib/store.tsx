@@ -19,13 +19,14 @@ import type {
   Session,
 } from "./types";
 
-const STORAGE_KEY = "fordelingsnogle-kanotur-v2";
+const STORAGE_KEY = "fordelingsnogle-kanotur-v3";
 
 export function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
 export interface StartSessionInput {
+  name: string;
   groupId: string;
   participantIds: string[];
   competitionIds: string[];
@@ -68,7 +69,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as AppState;
-        if (parsed && parsed.version === 2 && Array.isArray(parsed.participants)) {
+        if (parsed && parsed.version === 3 && Array.isArray(parsed.participants)) {
           setState({ ...initialState(), ...parsed });
         }
       }
@@ -154,6 +155,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             createdAt: Date.now(),
             groupId: input.groupId,
             groupName: group?.name ?? "Kanotur",
+            name: input.name.trim() || group?.name || "Kanotur",
             participants,
             competitions,
             leaderId: input.leaderId,

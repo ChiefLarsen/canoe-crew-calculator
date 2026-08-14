@@ -22,7 +22,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useStore } from "@/lib/store";
-import type { Competition, ScoringDirection } from "@/lib/types";
+import { CATEGORIES, UNITS, defaultUnit } from "@/lib/units";
+import type { Competition, CompetitionCategory, ScoringDirection } from "@/lib/types";
 
 export const Route = createFileRoute("/opsaetning")({
   head: () => ({
@@ -83,6 +84,8 @@ function PeopleTab() {
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [renamingGroup, setRenamingGroup] = useState(false);
+  const [groupDraft, setGroupDraft] = useState("");
 
   const current = state.groups.find((g) => g.id === groupId) ?? state.groups[0];
   const people = current ? participantsOf(current.id) : [];
@@ -122,15 +125,6 @@ function PeopleTab() {
               <Trash2 className="size-4" />
             </Button>
           </div>
-          {current ? (
-            <div className="flex gap-2">
-              <Input
-                value={current.name}
-                onChange={(e) => renameGroup(current.id, e.target.value)}
-                aria-label="Gruppenavn"
-              />
-            </div>
-          ) : null}
           <form
             className="flex gap-2"
             onSubmit={(e) => {
@@ -155,8 +149,56 @@ function PeopleTab() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
-            Deltagere{" "}
-            <span className="text-muted-foreground">({people.length})</span>
+            {current && renamingGroup ? (
+              <span className="flex items-center gap-2">
+                <Input
+                  value={groupDraft}
+                  onChange={(e) => setGroupDraft(e.target.value)}
+                  className="h-9 flex-1"
+                  aria-label="Gruppenavn"
+                  autoFocus
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Gem gruppenavn"
+                  onClick={() => {
+                    if (groupDraft.trim()) renameGroup(current.id, groupDraft.trim());
+                    setRenamingGroup(false);
+                  }}
+                >
+                  <Check className="size-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Annuller"
+                  onClick={() => setRenamingGroup(false)}
+                >
+                  <X className="size-4" />
+                </Button>
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <span>
+                  Deltagere i {current?.name ?? "gruppe"}{" "}
+                  <span className="text-muted-foreground">({people.length})</span>
+                </span>
+                {current ? (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="Omdøb gruppe"
+                    onClick={() => {
+                      setGroupDraft(current.name);
+                      setRenamingGroup(true);
+                    }}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                ) : null}
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -253,11 +295,68 @@ function PeopleTab() {
 
 const EMPTY: Omit<Competition, "id"> = {
   name: "",
-  unit: "",
+  category: "tid",
+  unit: "sek",
   description: "",
   direction: "high",
   multiplier: 1,
 };
+
+function CategoryUnitFields({
+  category,
+  unit,
+  onChange,
+  idPrefix,
+}: {
+  category: CompetitionCategory;
+  unit: string;
+  onChange: (patch: { category: CompetitionCategory; unit: string }) => void;
+  idPrefix: string;
+}) {
+  const units = UNITS[category];
+  return (
+    <>
+      <div className="space-y-1">
+        <Label htmlFor={`${idPrefix}-cat`}>Kategori</Label>
+        <Select
+          value={category}
+          onValueChange={(v) =>
+            onChange({
+              category: v as CompetitionCategory,
+              unit: defaultUnit(v as CompetitionCategory),
+            })
+          }
+        >
+          <SelectTrigger id={`${idPrefix}-cat`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CATEGORIES.map((c) => (
+              <SelectItem key={c.value} value={c.value}>
+                {c.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor={`${idPrefix}-unit`}>Enhed</Label>
+        <Select value={unit} onValueChange={(v) => onChange({ category, unit: v })}>
+          <SelectTrigger id={`${idPrefix}-unit`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {units.map((u) => (
+              <SelectItem key={u.value} value={u.value}>
+                {u.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </>
+  );
+}
 
 function CompetitionsTab() {
   const { state, addCompetition, updateCompetition, deleteCompetition } = useStore();
@@ -294,14 +393,12 @@ function CompetitionsTab() {
                         onChange={(e) => updateCompetition(c.id, { name: e.target.value })}
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label htmlFor={`u-${c.id}`}>Enhed</Label>
-                      <Input
-                        id={`u-${c.id}`}
-                        value={c.unit}
-                        onChange={(e) => updateCompetition(c.id, { unit: e.target.value })}
-                      />
-                    </div>
+                    <CategoryUnitFields
+                      idPrefix={`u-${c.id}`}
+                      category={c.category}
+                      unit={c.unit}
+                      onChange={(patch) => updateCompetition(c.id, patch)}
+                    />
                     <div className="space-y-1">
                       <Label>Retning</Label>
                       <Select
@@ -366,17 +463,24 @@ function CompetitionsTab() {
               setDraft(EMPTY);
             }}
           >
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Input
-                value={draft.name}
-                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                placeholder="Navn"
+            <div className="grid items-end gap-2 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="new-name">Navn</Label>
+                <Input
+                  id="new-name"
+                  value={draft.name}
+                  onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                  placeholder="Navn"
+                />
+              </div>
+              <CategoryUnitFields
+                idPrefix="new"
+                category={draft.category}
+                unit={draft.unit}
+                onChange={(patch) => setDraft({ ...draft, ...patch })}
               />
-              <Input
-                value={draft.unit}
-                onChange={(e) => setDraft({ ...draft, unit: e.target.value })}
-                placeholder="Enhed, fx sekunder"
-              />
+              <div className="space-y-1">
+              <Label>Retning</Label>
               <Select
                 value={draft.direction}
                 onValueChange={(v) => setDraft({ ...draft, direction: v as ScoringDirection })}
@@ -389,7 +493,11 @@ function CompetitionsTab() {
                   <SelectItem value="low">Lavt er bedst</SelectItem>
                 </SelectContent>
               </Select>
+              </div>
+              <div className="space-y-1">
+              <Label htmlFor="new-mult">Multiplier</Label>
               <Input
+                id="new-mult"
                 type="number"
                 step="0.5"
                 min="0.5"
@@ -397,6 +505,7 @@ function CompetitionsTab() {
                 onChange={(e) => setDraft({ ...draft, multiplier: Number(e.target.value) || 1 })}
                 placeholder="Multiplier"
               />
+              </div>
             </div>
             <Textarea
               value={draft.description}

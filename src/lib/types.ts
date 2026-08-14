@@ -1,5 +1,7 @@
 export type ScoringDirection = "high" | "low";
 
+export type CompetitionCategory = "tid" | "afstand" | "vaegt" | "lyd" | "antal";
+
 export interface Group {
   id: string;
   name: string;
@@ -14,6 +16,7 @@ export interface Participant {
 export interface Competition {
   id: string;
   name: string;
+  category: CompetitionCategory;
   unit: string;
   description: string;
   direction: ScoringDirection;
@@ -60,6 +63,8 @@ export interface Session {
   createdAt: number;
   groupId: string;
   groupName: string;
+  /** User given name for this trip, e.g. "Gudenåen 2026". */
+  name: string;
   /** Snapshot of the participants taking part in this session. */
   participants: SessionParticipant[];
   /** Snapshot of the competitions used in this session. */
