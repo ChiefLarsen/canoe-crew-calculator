@@ -10,6 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -44,11 +54,21 @@ export const Route = createFileRoute("/")({
 
 function HomePage() {
   const { state, session } = useStore();
-  const [wizard, setWizard] = useState(false);
+  const [wizard, setWizard] = useState<{ name: string; groupId: string } | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [tripName, setTripName] = useState("");
+  const [groupId, setGroupId] = useState(state.groups[0]?.id ?? "");
 
   if (session) return <ActiveSession />;
 
-  if (wizard) return <Wizard onCancel={() => setWizard(false)} />;
+  if (wizard)
+    return (
+      <Wizard
+        sessionName={wizard.name}
+        initialGroupId={wizard.groupId}
+        onCancel={() => setWizard(null)}
+      />
+    );
 
   return (
     <AppShell
@@ -61,7 +81,7 @@ function HomePage() {
             {state.groups.length} gruppe(r) · {state.competitions.length} konkurrencer i kataloget ·{" "}
             {state.history.length} i historikken
           </p>
-          <Button size="lg" onClick={() => setWizard(true)}>
+          <Button size="lg" onClick={() => setDialogOpen(true)}>
             <Play className="size-4" /> Start ny fordelingsnøgle
           </Button>
           <p className="text-xs text-muted-foreground">
@@ -72,14 +92,72 @@ function HomePage() {
           </p>
         </CardContent>
       </Card>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Navngiv turen</DialogTitle>
+            <DialogDescription>
+              Giv turen et navn og vælg hvilken gruppe deltagerne kommer fra.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="trip-name">Turens navn</Label>
+              <Input
+                id="trip-name"
+                value={tripName}
+                onChange={(e) => setTripName(e.target.value)}
+                placeholder="fx Gudenåen 2026"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Gruppe</Label>
+              <Select value={groupId} onValueChange={setGroupId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Vælg gruppe" />
+                </SelectTrigger>
+                <SelectContent>
+                  {state.groups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              className="w-full"
+              disabled={!tripName.trim() || !groupId}
+              onClick={() => {
+                setDialogOpen(false);
+                setWizard({ name: tripName.trim(), groupId });
+              }}
+            >
+              Videre <ArrowRight className="size-4" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
 
-function Wizard({ onCancel }: { onCancel: () => void }) {
+function Wizard({
+  sessionName,
+  initialGroupId,
+  onCancel,
+}: {
+  sessionName: string;
+  initialGroupId: string;
+  onCancel: () => void;
+}) {
   const { state, participantsOf, startSession } = useStore();
   const [step, setStep] = useState(0);
-  const [groupId, setGroupId] = useState(state.groups[0]?.id ?? "");
+  const [groupId, setGroupId] = useState(initialGroupId || (state.groups[0]?.id ?? ""));
   const [inactive, setInactive] = useState<string[]>([]);
   const [competitionIds, setCompetitionIds] = useState<string[]>(
     state.competitions.map((c) => c.id),
@@ -92,6 +170,7 @@ function Wizard({ onCancel }: { onCancel: () => void }) {
 
   const start = () => {
     startSession({
+      name: sessionName,
       groupId,
       participantIds: active.map((p) => p.id),
       competitionIds,
@@ -102,7 +181,7 @@ function Wizard({ onCancel }: { onCancel: () => void }) {
   };
 
   return (
-    <AppShell title="Ny fordelingsnøgle" description={`Trin ${step + 1} af 3`}>
+    <AppShell title={sessionName} description={`Ny fordelingsnøgle · trin ${step + 1} af 3`}>
       {step === 0 ? (
         <Card>
           <CardHeader className="pb-3">
@@ -191,7 +270,8 @@ function Wizard({ onCancel }: { onCancel: () => void }) {
                   <label htmlFor={`c-${c.id}`} className="min-w-0 flex-1 cursor-pointer">
                     <span className="block text-sm font-medium">{c.name}</span>
                     <span className="block text-xs text-muted-foreground">
-                      {c.unit} · {c.direction === "low" ? "Lavt er bedst" : "Højt er bedst"} ·{" "}
+                      {categoryLabel(c.category)} ({c.unit}) ·{" "}
+                      {c.direction === "low" ? "Lavt er bedst" : "Højt er bedst"} ·{" "}
                       {c.multiplier}x
                     </span>
                   </label>
@@ -291,7 +371,7 @@ function ActiveSession() {
 
   return (
     <AppShell
-      title={s.groupName}
+      title={s.name || s.groupName}
       description={`Aktiv session startet ${new Date(s.createdAt).toLocaleString("da-DK")}`}
       subnav={<SessionNav />}
     >
