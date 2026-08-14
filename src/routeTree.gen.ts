@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HistorikRouteImport } from './routes/historik'
 import { Route as KanoerRouteImport } from './routes/kanoer'
 import { Route as OpsaetningRouteImport } from './routes/opsaetning'
 import { Route as OversigtRouteImport } from './routes/oversigt'
@@ -19,6 +20,11 @@ import { Route as StillingRouteImport } from './routes/stilling'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistorikRoute = HistorikRouteImport.update({
+  id: '/historik',
+  path: '/historik',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KanoerRoute = KanoerRouteImport.update({
@@ -49,6 +55,7 @@ const StillingRoute = StillingRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/historik': typeof HistorikRoute
   '/kanoer': typeof KanoerRoute
   '/opsaetning': typeof OpsaetningRoute
   '/oversigt': typeof OversigtRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/historik': typeof HistorikRoute
   '/kanoer': typeof KanoerRoute
   '/opsaetning': typeof OpsaetningRoute
   '/oversigt': typeof OversigtRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/historik': typeof HistorikRoute
   '/kanoer': typeof KanoerRoute
   '/opsaetning': typeof OpsaetningRoute
   '/oversigt': typeof OversigtRoute
@@ -75,12 +84,26 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/kanoer' | '/opsaetning' | '/oversigt' | '/scores' | '/stilling'
+    | '/'
+    | '/historik'
+    | '/kanoer'
+    | '/opsaetning'
+    | '/oversigt'
+    | '/scores'
+    | '/stilling'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/kanoer' | '/opsaetning' | '/oversigt' | '/scores' | '/stilling'
+  to:
+    | '/'
+    | '/historik'
+    | '/kanoer'
+    | '/opsaetning'
+    | '/oversigt'
+    | '/scores'
+    | '/stilling'
   id:
     | '__root__'
     | '/'
+    | '/historik'
     | '/kanoer'
     | '/opsaetning'
     | '/oversigt'
@@ -90,6 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  HistorikRoute: typeof HistorikRoute
   KanoerRoute: typeof KanoerRoute
   OpsaetningRoute: typeof OpsaetningRoute
   OversigtRoute: typeof OversigtRoute
@@ -104,6 +128,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/historik': {
+      id: '/historik'
+      path: '/historik'
+      fullPath: '/historik'
+      preLoaderRoute: typeof HistorikRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kanoer': {
@@ -146,6 +177,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  HistorikRoute: HistorikRoute,
   KanoerRoute: KanoerRoute,
   OpsaetningRoute: OpsaetningRoute,
   OversigtRoute: OversigtRoute,

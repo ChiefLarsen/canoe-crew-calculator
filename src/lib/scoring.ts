@@ -7,8 +7,8 @@ export const LEADER_BADGE = "🧭";
 export const CAPTAIN_BADGE = "🧢";
 
 export interface RoleHolders {
-  leaderId?: string | null;
-  captainId?: string | null;
+  leaderId?: string | null | undefined;
+  captainId?: string | null | undefined;
 }
 
 /** Advantage factor for a participant: Kaptajn 10x, Ekspeditionsleder 3x, ellers 1x. */
