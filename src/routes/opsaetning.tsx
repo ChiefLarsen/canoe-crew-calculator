@@ -22,7 +22,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useStore } from "@/lib/store";
-import type { Competition, ScoringDirection } from "@/lib/types";
+import { CATEGORIES, UNITS, defaultUnit } from "@/lib/units";
+import type { Competition, CompetitionCategory, ScoringDirection } from "@/lib/types";
 
 export const Route = createFileRoute("/opsaetning")({
   head: () => ({
@@ -83,6 +84,8 @@ function PeopleTab() {
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [renamingGroup, setRenamingGroup] = useState(false);
+  const [groupDraft, setGroupDraft] = useState("");
 
   const current = state.groups.find((g) => g.id === groupId) ?? state.groups[0];
   const people = current ? participantsOf(current.id) : [];
@@ -122,15 +125,6 @@ function PeopleTab() {
               <Trash2 className="size-4" />
             </Button>
           </div>
-          {current ? (
-            <div className="flex gap-2">
-              <Input
-                value={current.name}
-                onChange={(e) => renameGroup(current.id, e.target.value)}
-                aria-label="Gruppenavn"
-              />
-            </div>
-          ) : null}
           <form
             className="flex gap-2"
             onSubmit={(e) => {
@@ -155,8 +149,56 @@ function PeopleTab() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
-            Deltagere{" "}
-            <span className="text-muted-foreground">({people.length})</span>
+            {current && renamingGroup ? (
+              <span className="flex items-center gap-2">
+                <Input
+                  value={groupDraft}
+                  onChange={(e) => setGroupDraft(e.target.value)}
+                  className="h-9 flex-1"
+                  aria-label="Gruppenavn"
+                  autoFocus
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Gem gruppenavn"
+                  onClick={() => {
+                    if (groupDraft.trim()) renameGroup(current.id, groupDraft.trim());
+                    setRenamingGroup(false);
+                  }}
+                >
+                  <Check className="size-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Annuller"
+                  onClick={() => setRenamingGroup(false)}
+                >
+                  <X className="size-4" />
+                </Button>
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <span>
+                  Deltagere i {current?.name ?? "gruppe"}{" "}
+                  <span className="text-muted-foreground">({people.length})</span>
+                </span>
+                {current ? (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="Omdøb gruppe"
+                    onClick={() => {
+                      setGroupDraft(current.name);
+                      setRenamingGroup(true);
+                    }}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                ) : null}
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
