@@ -7,6 +7,7 @@ import { NoSession } from "@/components/NoSession";
 import { SessionNav } from "@/components/SessionNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { allocate, STRATEGY_DESCRIPTIONS, STRATEGY_LABELS } from "@/lib/allocation";
 import { canoeLayouts, layoutKey, layoutLabel } from "@/lib/layouts";
 import { computeTotals } from "@/lib/scoring";
@@ -43,6 +44,8 @@ function CanoesPage() {
   const layouts = useMemo(() => canoeLayouts(participants.length), [participants]);
   const [selectedKey, setSelectedKey] = useState<string>("");
   const [strategy, setStrategy] = useState<Strategy>("balance");
+  const [bonus, setBonus] = useState<Record<string, number>>({});
+  const [duel, setDuel] = useState<string[] | null>(null);
 
   useEffect(() => {
     if (layouts.length === 0) {
@@ -62,14 +65,57 @@ function CanoesPage() {
 
   if (!session) return <NoSession title="Kanoer" />;
 
-  const generate = () => {
+  const rankPoints = (id: string) => (totals[id] ?? 0) + (bonus[id] ?? 0);
+
+  /** Returns the first group of participants sharing the exact same ranking points. */
+  const findTie = (): string[] | null => {
+    const byPoints = new Map<number, string[]>();
+    for (const p of participants) {
+      const value = rankPoints(p.id);
+      byPoints.set(value, [...(byPoints.get(value) ?? []), p.id]);
+    }
+    for (const ids of byPoints.values()) if (ids.length > 1) return ids;
+    return null;
+  };
+
+  const runAllocation = (extra: Record<string, number>) => {
     const layout = layouts.find((l) => layoutKey(l) === selectedKey);
     if (!layout) return;
-    const ranked = participants.map((p) => ({ id: p.id, points: totals[p.id] ?? 0 }));
+    const ranked = participants.map((p) => ({
+      id: p.id,
+      points: (totals[p.id] ?? 0) + (extra[p.id] ?? 0),
+    }));
     setAssignment(allocate(ranked, layout, strategy));
     toast.success("Kanoerne er fordelt!");
     void navigate({ to: "/oversigt" });
   };
+
+  const generate = () => {
+    const tie = findTie();
+    if (tie) {
+      setDuel(tie);
+      return;
+    }
+    runAllocation(bonus);
+  };
+
+  const resolveDuel = (winnerId: string) => {
+    const next = { ...bonus, [winnerId]: (bonus[winnerId] ?? 0) + 0.1 };
+    setBonus(next);
+    setDuel(null);
+    // Look for the next tie using the updated points.
+    const value = (id: string) => (totals[id] ?? 0) + (next[id] ?? 0);
+    const byPoints = new Map<number, string[]>();
+    for (const p of participants) byPoints.set(value(p.id), [...(byPoints.get(value(p.id)) ?? []), p.id]);
+    const remaining = [...byPoints.values()].find((ids) => ids.length > 1);
+    if (remaining) {
+      setDuel(remaining);
+      return;
+    }
+    runAllocation(next);
+  };
+
+  const nameOf = (id: string) => participants.find((p) => p.id === id)?.name ?? id;
 
   return (
     <AppShell
@@ -140,6 +186,30 @@ function CanoesPage() {
           <Button className="w-full" size="lg" onClick={generate}>
             <Dices className="size-4" /> Fordel kanoerne
           </Button>
+
+          <Dialog open={duel !== null} onOpenChange={(open) => !open && setDuel(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="text-xl">DØDT LØB!</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                Deathmatch nødvendig mellem {duel?.map(nameOf).join(" og ")}. Afgør det fysisk
+                (sten-saks-papir) og tryk på vinderen.
+              </p>
+              <div className="grid gap-2">
+                {duel?.map((id) => (
+                  <Button
+                    key={id}
+                    size="lg"
+                    className="h-14 text-base"
+                    onClick={() => resolveDuel(id)}
+                  >
+                    {nameOf(id)} vandt
+                  </Button>
+                ))}
+              </div>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </AppShell>

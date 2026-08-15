@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Eraser } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { CheckCircle2, Eraser, Ship } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { NoSession } from "@/components/NoSession";
@@ -10,13 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { competitionPoints, formatPoints } from "@/lib/scoring";
 import { useStore } from "@/lib/store";
 import { categoryLabel } from "@/lib/units";
@@ -64,6 +57,18 @@ function ScoresPage() {
   const participants = session?.participants ?? [];
   const roles = { leaderId: session?.leaderId, captainId: session?.captainId };
 
+  const completion = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    for (const c of competitions) {
+      const e = session?.scores[c.id];
+      map[c.id] =
+        participants.length > 0 && participants.every((p) => typeof e?.[p.id] === "number");
+    }
+    return map;
+  }, [competitions, participants, session]);
+
+  const allDone = competitions.length > 0 && competitions.every((c) => completion[c.id]);
+
   const points = useMemo(() => {
     if (!competition) return {};
     return competitionPoints(
@@ -82,18 +87,55 @@ function ScoresPage() {
       description="Vælg disciplin og tast resultaterne – brug måleværktøjerne hvis du er i tvivl."
       subnav={<SessionNav />}
     >
-      <Select value={competitionId} onValueChange={setCompetitionId}>
-        <SelectTrigger>
-          <SelectValue placeholder="Vælg konkurrence" />
-        </SelectTrigger>
-        <SelectContent>
-          {competitions.map((c) => (
-            <SelectItem key={c.id} value={c.id}>
-              {c.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="grid grid-cols-2 gap-2">
+        {competitions.map((c) => {
+          const active = c.id === competitionId;
+          const done = completion[c.id];
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setCompetitionId(c.id)}
+              className={
+                active
+                  ? "flex min-h-20 flex-col justify-between gap-1 rounded-xl border-2 border-primary bg-primary/10 p-3 text-left"
+                  : "flex min-h-20 flex-col justify-between gap-1 rounded-xl border border-border p-3 text-left transition-colors hover:bg-muted"
+              }
+            >
+              <span className="text-sm font-semibold leading-tight">{c.name}</span>
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                {done ? (
+                  <>
+                    <CheckCircle2 className="size-5 text-[hsl(142_70%_40%)]" />
+                    Færdig
+                  </>
+                ) : (
+                  <>
+                    {
+                      participants.filter(
+                        (p) => typeof session.scores[c.id]?.[p.id] === "number",
+                      ).length
+                    }
+                    /{participants.length} tastet
+                  </>
+                )}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {allDone ? (
+        <Button asChild size="lg" className="w-full">
+          <Link to="/kanoer">
+            <Ship className="size-4" /> Videre til kanofordeling
+          </Link>
+        </Button>
+      ) : (
+        <Button size="lg" className="w-full" disabled>
+          <Ship className="size-4" /> Alle discipliner skal tastes færdigt
+        </Button>
+      )}
 
       {competition ? (
         <Card>
