@@ -62,7 +62,7 @@ function HistoryPage() {
                     <AccordionTrigger className="text-left">
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">
-                          {entry.groupName}
+                          {entry.name || entry.groupName}
                         </span>
                         <span className="block text-xs font-normal text-muted-foreground">
                           {new Date(entry.endedAt).toLocaleString("da-DK")} ·{" "}
@@ -141,7 +141,7 @@ function HistoryPage() {
                               const text = buildSummary(
                                 entry.assignment!,
                                 entry.participants,
-                                entry.groupName,
+                                entry.name || entry.groupName,
                                 roles,
                               );
                               navigator.clipboard
