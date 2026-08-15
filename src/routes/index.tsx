@@ -29,6 +29,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { computeStandings, formatPoints } from "@/lib/scoring";
 import { useStore } from "@/lib/store";
+import { categoryLabel } from "@/lib/units";
 
 export const Route = createFileRoute("/")({
   head: () => ({
