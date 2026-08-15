@@ -62,8 +62,7 @@ function ScoresPage() {
     for (const c of competitions) {
       const e = session?.scores[c.id];
       map[c.id] =
-        participants.length > 0 &&
-        participants.every((p) => typeof e?.[p.id] === "number" && !Number.isNaN(e[p.id]));
+        participants.length > 0 && participants.every((p) => typeof e?.[p.id] === "number");
     }
     return map;
   }, [competitions, participants, session]);
