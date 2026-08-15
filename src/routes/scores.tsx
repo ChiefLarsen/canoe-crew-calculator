@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { competitionPoints, formatPoints } from "@/lib/scoring";
 import { useStore } from "@/lib/store";
+import { categoryLabel } from "@/lib/units";
 
 export const Route = createFileRoute("/scores")({
   head: () => ({
@@ -100,7 +101,7 @@ function ScoresPage() {
             <div className="min-w-0">
               <CardTitle className="text-base">{competition.name}</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
-                {competition.unit} ·{" "}
+                {categoryLabel(competition.category)} ({competition.unit}) ·{" "}
                 {competition.direction === "low" ? "Lavt er bedst" : "Højt er bedst"} ·{" "}
                 {competition.multiplier}x
               </p>
@@ -139,6 +140,7 @@ function ScoresPage() {
                   />
                   <ScoreTools
                     participantName={p.name}
+                    category={competition.category}
                     unit={competition.unit}
                     currentValue={entries?.[p.id]}
                     onSave={(value) => setScore(competition.id, p.id, value)}

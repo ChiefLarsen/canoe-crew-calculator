@@ -40,7 +40,12 @@ function SummaryPage() {
 
   const copy = async () => {
     if (!assignment) return;
-    const text = buildSummary(assignment, session.participants, session.groupName, roles);
+    const text = buildSummary(
+      assignment,
+      session.participants,
+      session.name || session.groupName,
+      roles,
+    );
     try {
       await navigator.clipboard.writeText(text);
       toast.success("Resumé kopieret – klar til at paste ind i chatten.");
