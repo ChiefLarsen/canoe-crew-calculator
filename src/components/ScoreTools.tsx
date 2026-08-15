@@ -10,7 +10,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CompetitionCategory } from "@/lib/types";
 
 function Stopwatch({ onSave }: { onSave: (value: number) => void }) {
