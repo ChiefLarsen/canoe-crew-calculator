@@ -480,31 +480,31 @@ function CompetitionsTab() {
                 onChange={(patch) => setDraft({ ...draft, ...patch })}
               />
               <div className="space-y-1">
-              <Label>Retning</Label>
-              <Select
-                value={draft.direction}
-                onValueChange={(v) => setDraft({ ...draft, direction: v as ScoringDirection })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="high">Højt er bedst</SelectItem>
-                  <SelectItem value="low">Lavt er bedst</SelectItem>
-                </SelectContent>
-              </Select>
+                <Label>Retning</Label>
+                <Select
+                  value={draft.direction}
+                  onValueChange={(v) => setDraft({ ...draft, direction: v as ScoringDirection })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="high">Højt er bedst</SelectItem>
+                    <SelectItem value="low">Lavt er bedst</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
-              <Label htmlFor="new-mult">Multiplier</Label>
-              <Input
-                id="new-mult"
-                type="number"
-                step="0.5"
-                min="0.5"
-                value={draft.multiplier}
-                onChange={(e) => setDraft({ ...draft, multiplier: Number(e.target.value) || 1 })}
-                placeholder="Multiplier"
-              />
+                <Label htmlFor="new-mult">Multiplier</Label>
+                <Input
+                  id="new-mult"
+                  type="number"
+                  step="0.5"
+                  min="0.5"
+                  value={draft.multiplier}
+                  onChange={(e) => setDraft({ ...draft, multiplier: Number(e.target.value) || 1 })}
+                  placeholder="Multiplier"
+                />
               </div>
             </div>
             <Textarea

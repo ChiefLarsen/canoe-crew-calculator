@@ -272,8 +272,7 @@ function Wizard({
                     <span className="block text-sm font-medium">{c.name}</span>
                     <span className="block text-xs text-muted-foreground">
                       {categoryLabel(c.category)} ({c.unit}) ·{" "}
-                      {c.direction === "low" ? "Lavt er bedst" : "Højt er bedst"} ·{" "}
-                      {c.multiplier}x
+                      {c.direction === "low" ? "Lavt er bedst" : "Højt er bedst"} · {c.multiplier}x
                     </span>
                   </label>
                 </li>
