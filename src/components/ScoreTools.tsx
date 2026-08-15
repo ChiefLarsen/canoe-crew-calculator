@@ -1,4 +1,4 @@
-import { Delete, Gauge, Mic, Pause, Play, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { Delete, Mic, Pause, Play, RotateCcw, SlidersHorizontal, Timer } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { CompetitionCategory } from "@/lib/types";
 
 function Stopwatch({ onSave }: { onSave: (value: number) => void }) {
   const [elapsed, setElapsed] = useState(0);
@@ -75,13 +76,22 @@ function SoundMeter({ onSave }: { onSave: (value: number) => void }) {
   const [level, setLevel] = useState(0);
   const [recording, setRecording] = useState(false);
 
+  const toDb = (rms: number) => {
+    if (rms <= 0) return 0;
+    // Rough SPL approximation: full-scale RMS ≈ 120 dB.
+    const db = 120 + 20 * Math.log10(rms);
+    return Math.max(0, Math.min(120, Math.round(db * 10) / 10));
+  };
+
   const record = async () => {
     setRecording(true);
     setPeak(null);
     let stream: MediaStream | null = null;
     let ctx: AudioContext | null = null;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      });
       ctx = new AudioContext();
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
@@ -93,16 +103,17 @@ function SoundMeter({ onSave }: { onSave: (value: number) => void }) {
       await new Promise<void>((resolve) => {
         const tick = () => {
           analyser.getFloatTimeDomainData(buffer);
-          let localMax = 0;
-          for (const sample of buffer) localMax = Math.max(localMax, Math.abs(sample));
-          max = Math.max(max, localMax);
-          setLevel(Math.round(localMax * 100));
+          let sum = 0;
+          for (const sample of buffer) sum += sample * sample;
+          const rms = Math.sqrt(sum / buffer.length);
+          max = Math.max(max, rms);
+          setLevel(toDb(rms));
           if (Date.now() - started >= 3000) resolve();
           else requestAnimationFrame(tick);
         };
         tick();
       });
-      setPeak(Math.round(max * 1000) / 10);
+      setPeak(toDb(max));
     } catch {
       toast.error("Kunne ikke få adgang til mikrofonen.");
     } finally {
@@ -116,10 +127,10 @@ function SoundMeter({ onSave }: { onSave: (value: number) => void }) {
   return (
     <div className="space-y-4 text-center">
       <p className="font-display text-5xl font-semibold tabular-nums">
-        {peak !== null ? `${peak}%` : recording ? `${level}%` : "–"}
+        {peak !== null ? `${peak} dB` : recording ? `${level} dB` : "–"}
       </p>
       <p className="text-xs text-muted-foreground">
-        Relativ lydmåling: lytter i 3 sekunder og gemmer den højeste top (0-100%).
+        Relativ lydmåling: lytter i 3 sekunder og gemmer den højeste top på en 0-120 dB skala.
       </p>
       <Button className="w-full" onClick={() => void record()} disabled={recording}>
         <Mic className="size-4" /> {recording ? "Optager…" : "Optag lyd"}
@@ -178,11 +189,13 @@ function Numpad({ onSave, initial }: { onSave: (value: number) => void; initial:
 
 export function ScoreTools({
   participantName,
+  category,
   unit,
   currentValue,
   onSave,
 }: {
   participantName: string;
+  category: CompetitionCategory;
   unit: string;
   currentValue: number | undefined;
   onSave: (value: number) => void;
@@ -193,41 +206,34 @@ export function ScoreTools({
     setOpen(false);
     toast.success(`${value} gemt til ${participantName}`);
   };
+  const tool = category === "tid" ? "timer" : category === "lyd" ? "sound" : "pad";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="icon" variant="outline" aria-label={`Måleværktøjer for ${participantName}`}>
-          <SlidersHorizontal className="size-4" />
+          {tool === "timer" ? (
+            <Timer className="size-4" />
+          ) : tool === "sound" ? (
+            <Mic className="size-4" />
+          ) : (
+            <SlidersHorizontal className="size-4" />
+          )}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>{participantName}</DialogTitle>
-          <DialogDescription>Måleværktøjer · enhed: {unit}</DialogDescription>
+          <DialogDescription>
+            {tool === "timer" ? "Stopur" : tool === "sound" ? "Lydmåler" : "Indtastning"} · enhed:{" "}
+            {unit}
+          </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="timer">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="timer">
-              <Play className="size-3.5" /> Stopur
-            </TabsTrigger>
-            <TabsTrigger value="sound">
-              <Gauge className="size-3.5" /> Lyd
-            </TabsTrigger>
-            <TabsTrigger value="pad">
-              <SlidersHorizontal className="size-3.5" /> Tal
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="timer" className="pt-4">
-            <Stopwatch onSave={save} />
-          </TabsContent>
-          <TabsContent value="sound" className="pt-4">
-            <SoundMeter onSave={save} />
-          </TabsContent>
-          <TabsContent value="pad" className="pt-4">
-            <Numpad onSave={save} initial={currentValue === undefined ? "" : String(currentValue)} />
-          </TabsContent>
-        </Tabs>
+        {tool === "timer" ? <Stopwatch onSave={save} /> : null}
+        {tool === "sound" ? <SoundMeter onSave={save} /> : null}
+        {tool === "pad" ? (
+          <Numpad onSave={save} initial={currentValue === undefined ? "" : String(currentValue)} />
+        ) : null}
       </DialogContent>
     </Dialog>
   );
