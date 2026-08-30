@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -300,7 +301,7 @@ export function ScoreTools({
           </DialogDescription>
         </DialogHeader>
         {tool === "timer" ? <Stopwatch onSave={save} /> : null}
-        {tool === "sound" ? <SoundMeter onSave={save} /> : null}
+        {tool === "sound" ? <SoundMeter onSaveScore={save} /> : null}
         {tool === "pad" ? (
           <Numpad onSave={save} initial={currentValue === undefined ? "" : String(currentValue)} />
         ) : null}
