@@ -160,14 +160,27 @@ function Wizard({
   const [step, setStep] = useState(0);
   const [groupId, setGroupId] = useState(initialGroupId || (state.groups[0]?.id ?? ""));
   const [inactive, setInactive] = useState<string[]>([]);
-  const [competitionIds, setCompetitionIds] = useState<string[]>(
-    state.competitions.map((c) => c.id),
-  );
+  
+  // ÆNDRING 1: Tom liste som standard i stedet for alle
+  const [competitionIds, setCompetitionIds] = useState<string[]>([]);
+  
   const [leaderId, setLeaderId] = useState<string>("none");
   const [captainId, setCaptainId] = useState<string>("none");
 
   const people = participantsOf(groupId);
   const active = people.filter((p) => !inactive.includes(p.id));
+
+  // ÆNDRING 2: Hjælpefunktion til Vælg Alle / Fravælg Alle
+  const isAllCompetitionsSelected =
+    state.competitions.length > 0 && competitionIds.length === state.competitions.length;
+
+  const toggleSelectAllCompetitions = () => {
+    if (isAllCompetitionsSelected) {
+      setCompetitionIds([]);
+    } else {
+      setCompetitionIds(state.competitions.map((c) => c.id));
+    }
+  };
 
   const start = () => {
     startSession({
@@ -250,10 +263,19 @@ function Wizard({
 
       {step === 1 ? (
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Trophy className="size-4" /> Konkurrencer i denne session
+              <Trophy className="size-4" /> Konkurrencer
             </CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={toggleSelectAllCompetitions}
+              className="h-8 text-xs"
+            >
+              {isAllCompetitionsSelected ? "Fravælg alle" : "Vælg alle"}
+            </Button>
           </CardHeader>
           <CardContent>
             <ul className="divide-y divide-border rounded-lg border border-border">
