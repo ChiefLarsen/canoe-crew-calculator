@@ -1,11 +1,11 @@
+import React, { useEffect, useRef, useState } from "react";
 import { Delete, Mic, Pause, Play, RotateCcw, SlidersHorizontal, Timer } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Progress } from '@/components/ui/progress';
+import { Progress } from "@/components/ui/progress";
+import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
