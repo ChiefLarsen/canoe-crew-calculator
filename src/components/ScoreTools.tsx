@@ -70,7 +70,7 @@ function Stopwatch({ onSave }: { onSave: (value: number) => void }) {
   );
 }
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 
@@ -86,12 +86,57 @@ export const SoundMeter: React.FC<SoundMeterProps> = ({ onSaveScore }) => {
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const sampleIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const NOISE_THRESHOLD = 60; // dB baggrundsstøj-tærskel (kun lyde over 60 dB tæller)
-  const TEST_DURATION = 5;    // Målingen kører i 5 sekunder
+  const NOISE_THRESHOLD = 60; // dB baggrundsstøj-tærskel
+  const TEST_DURATION = 5;    // Måleperiode i sekunder
 
-  const startMeasurement = async () => {
+  const clearAllTimers = () => {
+    if (sampleIntervalRef.current) {
+      clearInterval(sampleIntervalRef.current);
+      sampleIntervalRef.current = null;
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+  };
+
+  const stopAudio = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+      audioCtxRef.current.close();
+      audioCtxRef.current = null;
+    }
+  };
+
+  const stopMeasurement = (finalScore: number) => {
+    clearAllTimers();
+    stopAudio();
+    setIsMeasuring(false);
+    onSaveScore(finalScore);
+  };
+
+  // Sikrer oprydning, hvis brugeren navigerer væk midt i en måling
+  useEffect(() => {
+    return () => {
+      clearAllTimers();
+      stopAudio();
+    };
+  }, []);
+
+  const startMeasurement = async (e: React.MouseEvent) => {
+    // Forhindrer form submit og utilsigtet lukning
+    e.preventDefault();
+    e.stopPropagation();
+
+    clearAllTimers();
+    stopAudio();
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -99,6 +144,10 @@ export const SoundMeter: React.FC<SoundMeterProps> = ({ onSaveScore }) => {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       const audioCtx = new AudioContextClass();
       audioCtxRef.current = audioCtx;
+
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
 
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 256;
@@ -114,48 +163,33 @@ export const SoundMeter: React.FC<SoundMeterProps> = ({ onSaveScore }) => {
       let runningScore = 0;
       let durationLeft = TEST_DURATION;
 
-      // Mål lydstyrke hvert 100 millisekund
-      const sampleInterval = setInterval(() => {
+      // Mål lydstyrke hvert 100ms
+      sampleIntervalRef.current = setInterval(() => {
         analyser.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length;
         const db = Math.min(120, Math.round((average / 255) * 120));
         setCurrentDb(db);
 
-        // Hvis lyden er over tærsklen på 60 dB, lægges overskuddet til scoren
         if (db > NOISE_THRESHOLD) {
           runningScore += (db - NOISE_THRESHOLD);
           setAccumulatedScore(runningScore);
         }
       }, 100);
 
-      // Sekund-timer til nedtælling
-      intervalRef.current = setInterval(() => {
+      // Sekund-nedtælling
+      countdownIntervalRef.current = setInterval(() => {
         durationLeft -= 1;
         setTimeLeft(durationLeft);
 
         if (durationLeft <= 0) {
-          clearInterval(sampleInterval);
           stopMeasurement(runningScore);
         }
       }, 1000);
 
     } catch (err) {
       console.error("Fejl ved adgang til mikrofon:", err);
+      setIsMeasuring(false);
     }
-  };
-
-  const stopMeasurement = (finalScore: number) => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    if (audioCtxRef.current) {
-      audioCtxRef.current.close();
-    }
-
-    setIsMeasuring(false);
-    onSaveScore(finalScore);
   };
 
   return (
@@ -179,7 +213,7 @@ export const SoundMeter: React.FC<SoundMeterProps> = ({ onSaveScore }) => {
           <Progress value={((TEST_DURATION - timeLeft) / TEST_DURATION) * 100} />
         </div>
       ) : (
-        <Button onClick={startMeasurement} size="lg" className="w-full">
+        <Button type="button" onClick={startMeasurement} size="lg" className="w-full">
           Start 5-sekunders brøl-test 🚀
         </Button>
       )}
