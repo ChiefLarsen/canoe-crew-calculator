@@ -71,51 +71,98 @@ function Stopwatch({ onSave }: { onSave: (value: number) => void }) {
 }
 
 function SoundMeter({ onSave }: { onSave: (value: number) => void }) {
-  const [peak, setPeak] = useState<number | null>(null);
+  const [score, setScore] = useState(0);
   const [level, setLevel] = useState(0);
   const [recording, setRecording] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(5);
+  const [progress, setProgress] = useState(0);
 
   const toDb = (rms: number) => {
     if (rms <= 0) return 0;
-    // Rough SPL approximation: full-scale RMS ≈ 120 dB.
     const db = 120 + 20 * Math.log10(rms);
     return Math.max(0, Math.min(120, Math.round(db * 10) / 10));
   };
 
+  const stopRecording = (finalScore: number) => {
+    setRecording(false);
+    setProgress(100);
+    setTimeLeft(0);
+    onSave(Number(finalScore.toFixed(1)));
+  };
+
   const record = async () => {
     setRecording(true);
-    setPeak(null);
+    setScore(0);
+    setLevel(0);
+    setTimeLeft(5);
+    setProgress(0);
+
     let stream: MediaStream | null = null;
     let ctx: AudioContext | null = null;
+    let intervalId: number | undefined;
+
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
       });
+
       ctx = new AudioContext();
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.4;
       source.connect(analyser);
       const buffer = new Float32Array(analyser.fftSize);
-      let max = 0;
-      const started = Date.now();
+      const started = performance.now();
+      const noiseThreshold = 60;
+
+      const tick = () => {
+        analyser.getFloatTimeDomainData(buffer);
+        let sum = 0;
+        for (const sample of buffer) sum += sample * sample;
+        const rms = Math.sqrt(sum / buffer.length);
+        const currentDb = toDb(rms);
+        const elapsedMs = performance.now() - started;
+        const elapsedSeconds = elapsedMs / 1000;
+        const remaining = Math.max(0, 5 - elapsedSeconds);
+
+        setLevel(currentDb);
+        setTimeLeft(Number(remaining.toFixed(1)));
+        setProgress(Math.min(100, (elapsedSeconds / 5) * 100));
+
+        if (currentDb > noiseThreshold) {
+          setScore((prev) => {
+            const next = prev + (currentDb - noiseThreshold);
+            return Number(next.toFixed(1));
+          });
+        }
+
+        if (elapsedSeconds >= 5) {
+          stopRecording(Number(score + Math.max(0, currentDb - noiseThreshold)));
+          return;
+        }
+      };
+
+      intervalId = window.setInterval(tick, 100);
       await new Promise<void>((resolve) => {
-        const tick = () => {
-          analyser.getFloatTimeDomainData(buffer);
-          let sum = 0;
-          for (const sample of buffer) sum += sample * sample;
-          const rms = Math.sqrt(sum / buffer.length);
-          max = Math.max(max, rms);
-          setLevel(toDb(rms));
-          if (Date.now() - started >= 3000) resolve();
-          else requestAnimationFrame(tick);
+        const wait = () => {
+          if (!recording) {
+            resolve();
+            return;
+          }
+          const elapsed = performance.now() - started;
+          if (elapsed >= 5000) {
+            resolve();
+            return;
+          }
+          requestAnimationFrame(wait);
         };
-        tick();
+        wait();
       });
-      setPeak(toDb(max));
     } catch {
       toast.error("Kunne ikke få adgang til mikrofonen.");
     } finally {
+      window.clearInterval(intervalId);
       stream?.getTracks().forEach((t) => t.stop());
       void ctx?.close();
       setRecording(false);
@@ -126,22 +173,46 @@ function SoundMeter({ onSave }: { onSave: (value: number) => void }) {
   return (
     <div className="space-y-4 text-center">
       <p className="font-display text-5xl font-semibold tabular-nums">
-        {peak !== null ? `${peak} dB` : recording ? `${level} dB` : "–"}
+        {recording ? `${score.toFixed(1)}` : "–"}
       </p>
+      <div className="space-y-2">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-100 ease-linear"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Aktuel lyd</span>
+          <span>{level} dB</span>
+        </div>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Forløb</span>
+          <span>{timeLeft.toFixed(1)}s</span>
+        </div>
+      </div>
       <p className="text-xs text-muted-foreground">
-        Relativ lydmåling: lytter i 3 sekunder og gemmer den højeste top på en 0-120 dB skala.
+        Akkumuleret lydenergi: hvert sample over 60 dB lægges til score, så længere og højere støj giver højere værdi.
       </p>
-      <Button className="w-full" onClick={() => void record()} disabled={recording}>
-        <Mic className="size-4" /> {recording ? "Optager…" : "Optag lyd"}
-      </Button>
-      <Button
-        className="w-full"
-        variant="secondary"
-        disabled={peak === null}
-        onClick={() => peak !== null && onSave(peak)}
-      >
-        Gem måling
-      </Button>
+      <div className="grid grid-cols-2 gap-2">
+        <Button className="w-full" onClick={() => void record()} disabled={recording}>
+          <Mic className="size-4" /> {recording ? "Optager…" : "Start test"}
+        </Button>
+        <Button
+          className="w-full"
+          variant="secondary"
+          disabled={!recording}
+          onClick={() => {
+            if (recording) {
+              setRecording(false);
+              window.clearInterval(intervalId);
+              onSave(Number(score.toFixed(1)));
+            }
+          }}
+        >
+          <Pause className="size-4" /> Stop
+        </Button>
+      </div>
     </div>
   );
 }
