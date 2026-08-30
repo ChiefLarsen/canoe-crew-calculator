@@ -70,152 +70,122 @@ function Stopwatch({ onSave }: { onSave: (value: number) => void }) {
   );
 }
 
-function SoundMeter({ onSave }: { onSave: (value: number) => void }) {
-  const [score, setScore] = useState(0);
-  const [level, setLevel] = useState(0);
-  const [recording, setRecording] = useState(false);
+import React, { useState, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+
+interface SoundMeterProps {
+  onSaveScore: (score: number) => void;
+}
+
+export const SoundMeter: React.FC<SoundMeterProps> = ({ onSaveScore }) => {
+  const [isMeasuring, setIsMeasuring] = useState(false);
   const [timeLeft, setTimeLeft] = useState(5);
-  const [progress, setProgress] = useState(0);
+  const [currentDb, setCurrentDb] = useState(0);
+  const [accumulatedScore, setAccumulatedScore] = useState(0);
 
-  const toDb = (rms: number) => {
-    if (rms <= 0) return 0;
-    const db = 120 + 20 * Math.log10(rms);
-    return Math.max(0, Math.min(120, Math.round(db * 10) / 10));
-  };
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const stopRecording = (finalScore: number) => {
-    setRecording(false);
-    setProgress(100);
-    setTimeLeft(0);
-    onSave(Number(finalScore.toFixed(1)));
-  };
+  const NOISE_THRESHOLD = 60; // dB baggrundsstøj-tærskel (kun lyde over 60 dB tæller)
+  const TEST_DURATION = 5;    // Målingen kører i 5 sekunder
 
-  const record = async () => {
-    setRecording(true);
-    setScore(0);
-    setLevel(0);
-    setTimeLeft(5);
-    setProgress(0);
-
-    let stream: MediaStream | null = null;
-    let ctx: AudioContext | null = null;
-    let intervalId: number | undefined;
-
+  const startMeasurement = async () => {
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
 
-      ctx = new AudioContext();
-      const source = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 2048;
-      analyser.smoothingTimeConstant = 0.4;
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const audioCtx = new AudioContextClass();
+      audioCtxRef.current = audioCtx;
+
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+
+      const source = audioCtx.createMediaStreamSource(stream);
       source.connect(analyser);
-      const buffer = new Float32Array(analyser.fftSize);
-      const started = performance.now();
-      const noiseThreshold = 60;
 
-      const tick = () => {
-        analyser.getFloatTimeDomainData(buffer);
-        let sum = 0;
-        for (const sample of buffer) sum += sample * sample;
-        const rms = Math.sqrt(sum / buffer.length);
-        const currentDb = toDb(rms);
-        const elapsedMs = performance.now() - started;
-        const elapsedSeconds = elapsedMs / 1000;
-        const remaining = Math.max(0, 5 - elapsedSeconds);
+      setIsMeasuring(true);
+      setTimeLeft(TEST_DURATION);
+      setAccumulatedScore(0);
 
-        setLevel(currentDb);
-        setTimeLeft(Number(remaining.toFixed(1)));
-        setProgress(Math.min(100, (elapsedSeconds / 5) * 100));
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      let runningScore = 0;
+      let durationLeft = TEST_DURATION;
 
-        if (currentDb > noiseThreshold) {
-          setScore((prev) => {
-            const next = prev + (currentDb - noiseThreshold);
-            return Number(next.toFixed(1));
-          });
+      // Mål lydstyrke hvert 100 millisekund
+      const sampleInterval = setInterval(() => {
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length;
+        const db = Math.min(120, Math.round((average / 255) * 120));
+        setCurrentDb(db);
+
+        // Hvis lyden er over tærsklen på 60 dB, lægges overskuddet til scoren
+        if (db > NOISE_THRESHOLD) {
+          runningScore += (db - NOISE_THRESHOLD);
+          setAccumulatedScore(runningScore);
         }
+      }, 100);
 
-        if (elapsedSeconds >= 5) {
-          stopRecording(Number(score + Math.max(0, currentDb - noiseThreshold)));
-          return;
+      // Sekund-timer til nedtælling
+      intervalRef.current = setInterval(() => {
+        durationLeft -= 1;
+        setTimeLeft(durationLeft);
+
+        if (durationLeft <= 0) {
+          clearInterval(sampleInterval);
+          stopMeasurement(runningScore);
         }
-      };
+      }, 1000);
 
-      intervalId = window.setInterval(tick, 100);
-      await new Promise<void>((resolve) => {
-        const wait = () => {
-          if (!recording) {
-            resolve();
-            return;
-          }
-          const elapsed = performance.now() - started;
-          if (elapsed >= 5000) {
-            resolve();
-            return;
-          }
-          requestAnimationFrame(wait);
-        };
-        wait();
-      });
-    } catch {
-      toast.error("Kunne ikke få adgang til mikrofonen.");
-    } finally {
-      window.clearInterval(intervalId);
-      stream?.getTracks().forEach((t) => t.stop());
-      void ctx?.close();
-      setRecording(false);
-      setLevel(0);
+    } catch (err) {
+      console.error("Fejl ved adgang til mikrofon:", err);
     }
   };
 
+  const stopMeasurement = (finalScore: number) => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close();
+    }
+
+    setIsMeasuring(false);
+    onSaveScore(finalScore);
+  };
+
   return (
-    <div className="space-y-4 text-center">
-      <p className="font-display text-5xl font-semibold tabular-nums">
-        {recording ? `${score.toFixed(1)}` : "–"}
+    <div className="p-4 border rounded-xl bg-card space-y-4 text-center">
+      <h3 className="font-bold text-lg">📢 Lydenergi-måler (Lydstyrke + Varighed)</h3>
+      <p className="text-sm text-muted-foreground">
+        Måler samlet hyl i 5 sekunder. Kun lyd over {NOISE_THRESHOLD} dB tæller med.
       </p>
-      <div className="space-y-2">
-        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-primary transition-[width] duration-100 ease-linear"
-            style={{ width: `${progress}%` }}
-          />
+
+      {isMeasuring ? (
+        <div className="space-y-3">
+          <div className="text-3xl font-extrabold text-primary">
+            Tid tilbage: {timeLeft}s
+          </div>
+          <div className="text-lg">
+            Lyd Lige Nu: <span className="font-bold">{currentDb} dB</span>
+          </div>
+          <div className="text-2xl font-bold text-green-600">
+            Akkumuleret Score: {accumulatedScore} pts
+          </div>
+          <Progress value={((TEST_DURATION - timeLeft) / TEST_DURATION) * 100} />
         </div>
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Aktuel lyd</span>
-          <span>{level} dB</span>
-        </div>
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Forløb</span>
-          <span>{timeLeft.toFixed(1)}s</span>
-        </div>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Akkumuleret lydenergi: hvert sample over 60 dB lægges til score, så længere og højere støj giver højere værdi.
-      </p>
-      <div className="grid grid-cols-2 gap-2">
-        <Button className="w-full" onClick={() => void record()} disabled={recording}>
-          <Mic className="size-4" /> {recording ? "Optager…" : "Start test"}
+      ) : (
+        <Button onClick={startMeasurement} size="lg" className="w-full">
+          Start 5-sekunders brøl-test 🚀
         </Button>
-        <Button
-          className="w-full"
-          variant="secondary"
-          disabled={!recording}
-          onClick={() => {
-            if (recording) {
-              setRecording(false);
-              window.clearInterval(intervalId);
-              onSave(Number(score.toFixed(1)));
-            }
-          }}
-        >
-          <Pause className="size-4" /> Stop
-        </Button>
-      </div>
+      )}
     </div>
   );
-}
+};
 
 function Numpad({ onSave, initial }: { onSave: (value: number) => void; initial: string }) {
   const [text, setText] = useState(initial);
