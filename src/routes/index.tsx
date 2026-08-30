@@ -73,7 +73,7 @@ function HomePage() {
 
   return (
     <AppShell
-      title="Fordelingsnøgle"
+      title="Fordelingsnøglemesterens fordelingsnøgle"
       description="Ingen aktiv session. Start en ny fordelingsnøgle når selskabet er samlet."
     >
       <Card className="text-center">
