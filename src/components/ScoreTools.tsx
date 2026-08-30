@@ -86,7 +86,7 @@ export const SoundMeter: React.FC<SoundMeterProps> = ({ onSaveScore }) => {
   const sampleIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const NOISE_THRESHOLD = 60; // dB baggrundsstøj-tærskel
+  const NOISE_THRESHOLD = 15; // dB baggrundsstøj-tærskel
   const TEST_DURATION = 5;    // Måleperiode i sekunder
 
   const clearAllTimers = () => {
@@ -193,7 +193,7 @@ export const SoundMeter: React.FC<SoundMeterProps> = ({ onSaveScore }) => {
     <div className="p-4 border rounded-xl bg-card space-y-4 text-center">
       <h3 className="font-bold text-lg">📢 Lydenergi-måler (Lydstyrke + Varighed)</h3>
       <p className="text-sm text-muted-foreground">
-        Måler samlet hyl i 5 sekunder. Kun lyd over {NOISE_THRESHOLD} dB tæller med.
+        Måler i 5 sekunder. Kun lyd over {NOISE_THRESHOLD} dB tæller med.
       </p>
 
       {isMeasuring ? (
@@ -211,7 +211,7 @@ export const SoundMeter: React.FC<SoundMeterProps> = ({ onSaveScore }) => {
         </div>
       ) : (
         <Button type="button" onClick={startMeasurement} size="lg" className="w-full">
-          Start 5-sekunders brøl-test 🚀
+          Start 🚀
         </Button>
       )}
     </div>
