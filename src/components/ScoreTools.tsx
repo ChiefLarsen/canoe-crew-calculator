@@ -2,7 +2,7 @@ import { Delete, Mic, Pause, Play, RotateCcw, SlidersHorizontal, Timer } from "l
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
+import { Progress } from '@/components/ui/progress';
   Dialog,
   DialogContent,
   DialogDescription,
@@ -69,10 +69,6 @@ function Stopwatch({ onSave }: { onSave: (value: number) => void }) {
     </div>
   );
 }
-
-import React, { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 
 interface SoundMeterProps {
   onSaveScore: (score: number) => void;
