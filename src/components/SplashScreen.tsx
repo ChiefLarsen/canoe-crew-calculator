@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, TargetAndTransition, Transition } from "framer-motion";
 
 interface SplashScreenProps {
   onComplete: () => void;
+}
+
+interface AnimationVariant {
+  initial: TargetAndTransition;
+  animate: TargetAndTransition;
+  transition: Transition;
 }
 
 export function SplashScreen({ onComplete }: SplashScreenProps) {
@@ -18,28 +24,29 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
   }, [onComplete]);
 
   // Idé 1: Cinematic Sunset
-  const variant0 = {
+  const variant0: AnimationVariant = {
     initial: { opacity: 0, scale: 1 },
     animate: { opacity: 1, scale: 1.08 },
-    transition: { opacity: { duration: 1.2 }, scale: { duration: 5.5, ease: "easeOut" } },
+    transition: { duration: 5.5, ease: "easeOut" },
   };
 
   // Idé 2: Interaktiv Låseeffekt
-  const variant1 = {
+  const variant1: AnimationVariant = {
     initial: { opacity: 0, filter: "blur(10px) brightness(0.4)" },
     animate: { opacity: 1, filter: "blur(0px) brightness(1)" },
     transition: { duration: 2, ease: "easeOut" },
   };
 
   // Idé 3: Panorering & Segl
-  const variant2 = {
+  const variant2: AnimationVariant = {
     initial: { opacity: 0, y: 15, scale: 1.04 },
     animate: { opacity: 1, y: 0, scale: 1 },
     transition: { duration: 2.5, ease: "easeOut" },
   };
 
-  const variants = [variant0, variant1, variant2];
-  const currentVariant = variants[variant];
+  const variants: AnimationVariant[] = [variant0, variant1, variant2];
+  // Fallback sikrer mod undefined advarslen
+  const currentVariant = variants[variant] ?? variant0;
 
   return (
     <div
