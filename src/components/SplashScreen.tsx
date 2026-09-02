@@ -69,3 +69,4 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
     </div>
   );
 }
+export default SplashScreen;
