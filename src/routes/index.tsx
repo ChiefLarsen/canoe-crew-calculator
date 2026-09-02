@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { PersonName } from "@/components/PersonName";
 import { SessionNav } from "@/components/SessionNav";
+import SplashScreen from "@/components/SplashScreen";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,8 +60,10 @@ function HomePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tripName, setTripName] = useState("");
   const [groupId, setGroupId] = useState(state.groups[0]?.id ?? "");
+  const [showSplash, setShowSplash] = useState(true);
 
   if (session) return <ActiveSession />;
+  if (showSplash) return <SplashScreen onComplete={() => setShowSplash(false)} />;
 
   if (wizard)
     return (
