@@ -50,6 +50,13 @@ interface StoreValue {
   deleteCompetition: (id: string) => void;
   startSession: (input: StartSessionInput) => void;
   setScore: (competitionId: string, participantId: string, value: number | null) => void;
+  setRawScore: (
+    competitionId: string,
+    participantId: string,
+    raw: number | null,
+    targetWeight: number,
+  ) => void;
+  setTargetWeight: (competitionId: string, targetWeight: number) => void;
   clearScores: (competitionId: string) => void;
   setAssignment: (assignment: Assignment | null) => void;
   endSession: () => void;
@@ -161,6 +168,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             leaderId: input.leaderId,
             captainId: input.captainId,
             scores: {},
+            rawScores: {},
             assignment: null,
           };
           return { ...prev, session };
@@ -172,10 +180,43 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           else entries[participantId] = val;
           return { ...session, scores: { ...session.scores, [competitionId]: entries } };
         }),
+      setRawScore: (competitionId, participantId, raw, targetWeight) =>
+        patchSession((session) => {
+          const raws = { ...((session.rawScores ?? {})[competitionId] ?? {}) };
+          const entries = { ...(session.scores[competitionId] ?? {}) };
+          if (raw === null || Number.isNaN(raw)) {
+            delete raws[participantId];
+            delete entries[participantId];
+          } else {
+            raws[participantId] = raw;
+            entries[participantId] = Math.abs(raw - targetWeight);
+          }
+          return {
+            ...session,
+            scores: { ...session.scores, [competitionId]: entries },
+            rawScores: { ...(session.rawScores ?? {}), [competitionId]: raws },
+          };
+        }),
+      setTargetWeight: (competitionId, targetWeight) =>
+        patchSession((session) => {
+          const raws = (session.rawScores ?? {})[competitionId] ?? {};
+          const entries: Record<string, number> = { ...(session.scores[competitionId] ?? {}) };
+          for (const [pid, raw] of Object.entries(raws)) {
+            entries[pid] = Math.abs(raw - targetWeight);
+          }
+          return {
+            ...session,
+            competitions: session.competitions.map((c) =>
+              c.id === competitionId ? { ...c, targetWeight } : c,
+            ),
+            scores: { ...session.scores, [competitionId]: entries },
+          };
+        }),
       clearScores: (competitionId) =>
         patchSession((session) => ({
           ...session,
           scores: { ...session.scores, [competitionId]: {} },
+          rawScores: { ...(session.rawScores ?? {}), [competitionId]: {} },
         })),
       setAssignment: (assignment) => patchSession((session) => ({ ...session, assignment })),
       endSession: () =>

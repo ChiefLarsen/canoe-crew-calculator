@@ -37,7 +37,7 @@ export const Route = createFileRoute("/scores")({
 });
 
 function ScoresPage() {
-  const { session, setScore, clearScores } = useStore();
+  const { session, setScore, setRawScore, setTargetWeight, clearScores } = useStore();
   const [competitionId, setCompetitionId] = useState<string>("");
 
   const competitions = session?.competitions ?? [];
@@ -54,6 +54,9 @@ function ScoresPage() {
 
   const competition = competitions.find((c) => c.id === competitionId);
   const entries = competition && session ? session.scores[competition.id] : undefined;
+  const rawEntries = competition && session ? session.rawScores?.[competition.id] : undefined;
+  const isWeight = competition?.category === "vaegt";
+  const target = competition?.targetWeight ?? 500;
   const participants = session?.participants ?? [];
   const roles = { leaderId: session?.leaderId, captainId: session?.captainId };
 
@@ -156,36 +159,66 @@ function ScoresPage() {
             </Button>
           </CardHeader>
           <CardContent>
+            {isWeight ? (
+              <div className="mb-3 flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-3">
+                <label htmlFor="target-weight" className="text-sm font-semibold">
+                  Målvægt
+                </label>
+                <Input
+                  id="target-weight"
+                  type="number"
+                  step="any"
+                  inputMode="decimal"
+                  className="h-9 w-28"
+                  value={target}
+                  onChange={(e) =>
+                    setTargetWeight(competition.id, Number(e.target.value) || 0)
+                  }
+                />
+                <span className="text-sm text-muted-foreground">{competition.unit}</span>
+              </div>
+            ) : null}
             <ul className="divide-y divide-border">
               {participants.map((p) => (
                 <li key={p.id} className="flex items-center gap-2 py-2.5">
-                  <PersonName
-                    id={p.id}
-                    name={p.name}
-                    roles={roles}
-                    className="flex-1 text-sm font-medium"
-                  />
+                  <div className="min-w-0 flex-1">
+                    <PersonName
+                      id={p.id}
+                      name={p.name}
+                      roles={roles}
+                      className="text-sm font-medium"
+                    />
+                    {isWeight && typeof rawEntries?.[p.id] === "number" ? (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Målt: {rawEntries[p.id]}
+                        {competition.unit} | Afvigelse: {formatPoints(entries?.[p.id] ?? 0)}
+                        {competition.unit}
+                      </p>
+                    ) : null}
+                  </div>
                   <Input
                     type="number"
                     step="any"
                     inputMode="decimal"
                     className="h-9 w-24"
                     placeholder={competition.unit}
-                    value={entries?.[p.id] ?? ""}
-                    onChange={(e) =>
-                      setScore(
-                        competition.id,
-                        p.id,
-                        e.target.value === "" ? null : Number(e.target.value),
-                      )
-                    }
+                    value={(isWeight ? rawEntries?.[p.id] : entries?.[p.id]) ?? ""}
+                    onChange={(e) => {
+                      const value = e.target.value === "" ? null : Number(e.target.value);
+                      if (isWeight) setRawScore(competition.id, p.id, value, target);
+                      else setScore(competition.id, p.id, value);
+                    }}
                   />
                   <ScoreTools
                     participantName={p.name}
                     category={competition.category}
                     unit={competition.unit}
-                    currentValue={entries?.[p.id]}
-                    onSave={(value) => setScore(competition.id, p.id, value)}
+                    currentValue={isWeight ? rawEntries?.[p.id] : entries?.[p.id]}
+                    onSave={(value) =>
+                      isWeight
+                        ? setRawScore(competition.id, p.id, value, target)
+                        : setScore(competition.id, p.id, value)
+                    }
                   />
                   <Badge
                     variant={points[p.id] ? "default" : "secondary"}
