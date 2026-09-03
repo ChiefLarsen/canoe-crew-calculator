@@ -21,6 +21,8 @@ export interface Competition {
   description: string;
   direction: ScoringDirection;
   multiplier: number;
+  /** Only for category "vaegt": target weight used to compute absolute deviation. */
+  targetWeight?: number;
 }
 
 /** scores[competitionId][participantId] = raw value */
@@ -72,6 +74,8 @@ export interface Session {
   leaderId: string | null;
   captainId: string | null;
   scores: ScoreMap;
+  /** Raw scale readings for weight competitions; scores hold the deviation. */
+  rawScores?: ScoreMap;
   assignment: Assignment | null;
 }
 
